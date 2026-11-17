@@ -280,7 +280,7 @@ importers:
   packages/core:
     dependencies:
       typescript:
-        specifier: '>=4.8'
+        specifier: '>=4.8 <7'
         version: 5.5.3
 
   packages/eslint-plugin:
