@@ -16,7 +16,7 @@ jobs:
           node-version: '24'
       - uses: pnpm/action-setup@v6
       - run: npm install -g yalc
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install
       - run: pnpm lint:all
       - run: pnpm link:sheriff
       - run: pnpm test:ci

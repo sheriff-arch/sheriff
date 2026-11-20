@@ -30,128 +30,63 @@ expected. The following steps are required to run the tests:
 
 ## Release through a pull request
 
-Open **GitHub → Actions → Release → Run workflow**, select **main**, choose
-**patch**, **minor**, or **major**, and run the workflow. The workflow must first
-be merged into the default branch to appear in Actions.
+Open **Actions → Release → Run workflow** on `main` and choose patch, minor or
+major. Nx updates both package versions, the plugin's exact core peer dependency,
+the lockfile as needed, and `CHANGELOG.md` from conventional commits since the
+previous tag. Nx's commit, tag and push settings are disabled, including for local
+`nx release` commands.
 
-The preparation job uses the existing Nx Release configuration to update both
-package versions, the plugin's exact core peer dependency, `pnpm-lock.yaml`, and
-`CHANGELOG.md`. Nx derives changelog entries from conventional commits since the
-previous release tag; maintenance commits are included. Nx does not commit, tag,
-push, or publish. The plugin's local core development dependency uses `workspace:*`,
-so preparation does not require the new core version to exist on npm yet.
+GitHub Actions commits the generated files to `release/v{version}` and opens a PR.
+Review the versions and changelog, approve any pending workflow runs, and merge
+when its checks pass. **Merging that release PR authorizes publication.**
 
-GitHub Actions commits only those four files to `release/v{version}` and opens a
-PR against `main`. On the PR, click **Approve workflows** to start its **Test**
-checks. Review the versions and changelog, edit the changelog on the branch if
-needed, and wait for the checks before merging. **Merging the PR authorizes
-publication.** Closing it without merging publishes nothing.
+After merge, the workflow checks and builds that exact merged commit, verifies
+the compiled package versions and npm dry runs, tags it, and publishes
+`dist/packages/core` followed by `dist/packages/eslint-plugin` to npm (`latest`).
+It pushes only the tag after merge; it never pushes a release commit to `main`.
+It does not create a GitHub Release page. Release runs are serialized and queued;
+only one release PR may be open at a time.
 
-After a release PR is merged, the publication job checks out that exact merged
-commit, runs lint, unit tests, the CI suite, a full build and all integration
-tests, and verifies the compiled package metadata and npm dry runs. The build
-runs after versioning, so the artifacts contain the reviewed versions and exact
-peer dependency. GitHub Actions then tags the merged commit as `v{version}` and
-pushes only that tag. Once the tag push succeeds, npm publishes
-`dist/packages/core`, then `dist/packages/eslint-plugin`, with the `latest` tag.
-It never pushes a release commit directly to `main`, regenerates the approved
-changelog after merge, or creates a GitHub Release page.
+### One-time setup
 
-Only `sheriff-arch/sheriff` can prepare or publish. Preparation runs only on
-`main`; publication requires a merged PR from the same repository whose head
-branch exactly matches `release/v{version}`. Both package versions and the core
-peer dependency must agree, and the version must not already be tagged.
-
-Preparation and publication share a concurrency group that never cancels an
-active run. `queue: max` keeps pending runs queued (up to GitHub's limit of 100),
-so a new manual request cannot replace a waiting publication. Only one release
-PR may be open at a time. Finish the current publication before starting another
-release. Preparation refuses to proceed when the version on `main` has not been
-tagged yet. See [GitHub concurrency](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency).
-
-### One-time GitHub setup
-
-Under **Settings → Actions → General → Workflow permissions**, enable **Allow
-GitHub Actions to create and approve pull requests**. The workflow only creates
-PRs; it never approves or merges them. This setting is currently disabled in this
-repository (verified 2026-11-18). Organization policy may require an owner to
-enable it. The default workflow permission can remain read-only: each job asks
-for the permissions it needs.
-
-The preparation job requests `contents: write` for the release branch and
-`pull-requests: write` to open the PR. GitHub currently creates approval-required
-check runs for PRs created or updated with its built-in token. A maintainer with
-write access must click **Approve workflows** in the PR's merge box. If the
-release branch changes, wait for checks on its latest commit and approve any
-new pending runs. No extra workflow-dispatch permission or token is needed.
-See [GitHub workflow triggering](https://docs.github.com/en/actions/how-tos/writing-workflows/choosing-when-your-workflow-runs/triggering-a-workflow).
-
-Keep the normal protection on `main`, including required reviews/checks. For an
-enforced test gate, require the **build** check from the **Test** workflow. The
-publication job requests only `contents: write` to push the version tag and
-`id-token: write` for npm. Rules protecting `release/*` branches or `v*` tags must
-permit those operations by the workflow identity; otherwise it fails without
-bypassing the rules. A rejected tag push stops npm publication. No personal access
-token, force-push, automatic approval, or protection changes are used.
-
-### One-time npm package-owner setup
-
-For **each** of `@softarc/sheriff-core` and `@softarc/eslint-plugin-sheriff`, open
-the package's npm **Settings → Trusted Publisher**, choose **GitHub Actions**,
-and enter:
+1. Merge this workflow into the default branch so it appears in Actions.
+2. In **Settings → Actions → General → Workflow permissions**, enable **Allow
+   GitHub Actions to create and approve pull requests**. The workflow creates PRs
+   but never approves or merges them; default token permissions can stay read-only.
+3. For both npm packages, `@softarc/sheriff-core` and
+   `@softarc/eslint-plugin-sheriff`, add a **GitHub Actions** trusted publisher:
 
 | Setting | Value |
 | --- | --- |
 | Organization or user | `sheriff-arch` |
 | Repository | `sheriff` |
-| Workflow filename | `release.yml` (filename only) |
-| Environment name | Leave empty; the workflow does not use an environment |
-| Allowed actions | Allow direct publishing with `npm publish` |
+| Workflow filename | `release.yml` |
+| Environment | Leave empty |
+| Allowed action | Allow direct publishing with `npm publish` |
 
-Set this up shortly before the first release: npm currently expires a new trusted
-publisher configuration if it has no successful publish within two days.
-No `NPM_TOKEN` or `NODE_AUTH_TOKEN` secret is needed. Publication uses a
-GitHub-hosted runner, Node 24, npm 11 (at least 11.5.1), and OIDC. npm generates
-provenance automatically. Both package manifests must keep their repository URL
-pointing to `https://github.com/sheriff-arch/sheriff`.
-See [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/) for the
-current settings and requirements.
+No npm token secret is required. Configure npm shortly before the first release;
+new connections currently expire without a successful publish within two days.
+See [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/).
 
-### Failed releases
+Keep `main` protected. Rules for `release/*` branches and `v*` tags must allow the
+workflow to create them. Rejected branch/tag pushes stop the workflow; protection
+is never bypassed. GitHub may require **Approve workflows** on bot-created PRs;
+see [GitHub workflow triggering](https://docs.github.com/en/actions/how-tos/writing-workflows/choosing-when-your-workflow-runs/triggering-a-workflow).
 
-If preparation fails after pushing the release branch, inspect the branch and
-any existing PR before retrying. If the branch is correct, open the PR manually
-and wait for its **Test** checks; otherwise close an obsolete PR and remove only
-the stale release branch before starting a fresh preparation. Nothing has been
-tagged or published during preparation.
+### Retrying a release
 
-Publication reruns are deliberately rejected. Inspect the failed step, remote
-tag, and both npm versions first. If the tag was not pushed and nothing was
-published, check out the approved merge, rerun all checks, and complete tagging
-and publication using an authenticated maintainer session or a separately
-reviewed recovery workflow. If the tag exists, rebuild that exact tag and publish
-only the missing package version. Never bump again just to finish a release.
-npm publishes are not atomic: core can succeed while the plugin fails, and
-published versions cannot be overwritten. Keep the tag and finish the missing
-publication.
+If publication fails **before the tag is pushed**, fix the cause and rerun its
+failed job. Existing remote tags block publication reruns. Once the tag has been
+pushed, inspect both npm versions and publish only the missing package version
+from that exact tag using an authenticated maintainer session or a separately
+reviewed recovery workflow. The two npm publishes are not atomic; never bump again
+just to finish a partial publication.
 
-The old release-please workflow, legacy Nx publish targets, and manual version
-bump/publish scripts have been removed. Nx Release is the versioning authority;
-GitHub Actions owns the release branch, PR and post-merge tag/publication.
+If preparation left a branch without a PR, inspect it and open the PR manually,
+or remove the stale branch before preparing again.
 
-## Preview release preparation locally
-
-Start from a clean, up-to-date checkout with `origin` pointing to
-`sheriff-arch/sheriff`, then install with `pnpm install --frozen-lockfile`.
-Preview the same preparation used by the workflow:
+To preview version/changelog generation locally without committing or tagging:
 
 ```shell
 pnpm exec nx release patch --skip-publish --dry-run
 ```
-
-To generate the changes locally, omit `--dry-run`. With the repository's Nx
-configuration, this updates the versions, peer dependency, lockfile and changelog
-without creating a commit or tag, pushing, or publishing. Review `git diff` and
-keep any release changes on a release branch for review.
-
-See the [Nx release guide](https://nx.dev/docs/guides/nx-release/publish-in-ci-cd).

@@ -1,7 +1,7 @@
 {
   "name": "@softarc/sheriff-core",
   "version": "0.20.0",
-  "homepage": "https://github.com/sheriff-arch/sheriff",
+  "homepage": "https://github.com/softarc-consulting/sheriff",
   "license": "MIT",
   "author": {
     "name": "Rainer Hahnekamp",
@@ -9,7 +9,7 @@
     "url": "https://www.angulararchitects.io/"
   },
   "bin": {
-    "sheriff": "src/bin/main.js"
+    "sheriff": "./src/bin/main.js"
   },
   "repository": {
     "type": "git",
