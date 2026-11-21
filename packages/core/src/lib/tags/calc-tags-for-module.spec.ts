@@ -4,11 +4,14 @@ import { FsPath } from '../file-info/fs-path';
 import throwIfNull from '../util/throw-if-null';
 import {
   ExistingTagPlaceholderError,
+  InvalidModuleTagError,
   InvalidPlaceholderError,
   NoAssignedTagError,
   TagWithoutValueError,
 } from '../error/user-error';
 import '../test/expect.extensions';
+import { sameTag } from '../checks/same-tag';
+import { TagConfigValue } from '../config/module-config';
 
 describe('calc tags for module', () => {
   const root = '/project' as FsPath;
@@ -90,6 +93,18 @@ describe('calc tags for module', () => {
       }),
     ).toEqual(['domain:abc', 'type:lib']);
   });
+
+  it.each(['abc', '<from>'])(
+    'should explain that sameTag cannot assign module tags for %s',
+    (pathMatcher) => {
+      expect(() =>
+        calcTagsForModule('/project/abc' as FsPath, root, {
+          // Config files are transpiled without type-checking.
+          [pathMatcher]: sameTag as unknown as TagConfigValue,
+        }),
+      ).toThrowUserError(new InvalidModuleTagError('/project/abc'));
+    },
+  );
 
   it('should support regular expressions', () => {
     const rootDir = '/project' as FsPath;

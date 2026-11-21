@@ -10,7 +10,8 @@ export type UserErrorCode =
   | 'SH-009'
   | 'SH-010'
   | 'SH-011'
-  | 'SH-012';
+  | 'SH-012'
+  | 'SH-013';
 
 export class UserError extends Error {
   constructor(
@@ -120,5 +121,14 @@ export class CollidingEntrySettings extends UserError {
 export class NoEntryPointsFoundError extends UserError {
   constructor() {
     super('SH-012', 'No entryPoints defined in sheriff.config.ts.');
+  }
+}
+
+export class InvalidModuleTagError extends UserError {
+  constructor(moduleDir: string) {
+    super(
+      'SH-013',
+      `Invalid tag for module '${moduleDir}': expected a string. sameTag can only be used in depRules, not in modules.`,
+    );
   }
 }

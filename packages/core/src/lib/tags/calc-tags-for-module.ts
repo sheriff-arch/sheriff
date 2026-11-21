@@ -7,6 +7,7 @@ import getFs from '../fs/getFs';
 import { FsPath } from '../file-info/fs-path';
 import {
   ExistingTagPlaceholderError,
+  InvalidModuleTagError,
   InvalidPlaceholderError,
   NoAssignedTagError,
   TagWithoutValueError,
@@ -149,6 +150,10 @@ function replacePlaceholdersInTag(
   placeholders: Record<string, string>,
   fullDir: string,
 ) {
+  if (typeof tag !== 'string') {
+    throw new InvalidModuleTagError(fullDir);
+  }
+
   let replacedTag = tag;
   for (const placeholder in placeholders) {
     const value = placeholders[placeholder];
