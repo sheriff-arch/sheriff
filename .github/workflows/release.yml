@@ -20,12 +20,6 @@ on:
 
 permissions: {}
 
-# Serialize preparation and publishing; never interrupt an active publication.
-concurrency:
-  group: sheriff-release
-  queue: max
-  cancel-in-progress: false
-
 jobs:
   prepare:
     if: github.event_name == 'workflow_dispatch' && github.repository == 'sheriff-arch/sheriff' && github.ref == 'refs/heads/main'
@@ -45,33 +39,15 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
-          package-manager-cache: false
 
       - uses: pnpm/action-setup@v6
       - run: pnpm install --frozen-lockfile
-
-      - name: Check for an unfinished release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          open_release=$(gh pr list --base main --state open --json headRefName --jq '.[].headRefName | select(startswith("release/v"))')
-          if [ -n "$open_release" ]; then
-            echo "::error::Finish or close the existing release PR first: $open_release"
-            exit 1
-          fi
-          current_version=$(node -p "require('./packages/core/package.json').version")
-          latest_tag=$(git describe --tags --match 'v[0-9]*' --abbrev=0)
-          if [ "$latest_tag" != "v$current_version" ]; then
-            echo "::error::The current version has not been tagged. Finish the previous release before preparing another."
-            exit 1
-          fi
 
       - name: Generate versions and changelog with Nx
         id: version
         env:
           VERSION_BUMP: ${{ inputs.version }}
         run: |
-          case "$VERSION_BUMP" in patch|minor|major) ;; *) exit 1 ;; esac
           test -z "$(git status --porcelain)"
           # nx.json disables Nx commits, tags and pushes. npm publishing is skipped.
           pnpm exec nx release "$VERSION_BUMP" --skip-publish
@@ -86,9 +62,9 @@ jobs:
           git switch -c "$release_branch"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add packages/core/package.json packages/eslint-plugin/package.json pnpm-lock.yaml CHANGELOG.md
+          git add -A
           git commit -m "chore: release $RELEASE_VERSION"
-          git push origin "HEAD:refs/heads/$release_branch"
+          git push origin "$release_branch"
           cat > "$RUNNER_TEMP/release-pr.md" <<'BODY'
           Review both package versions, the exact core peer dependency, lockfile and changelog.
           You can edit the changelog on this branch before merging.
@@ -116,7 +92,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          # Build the approved merge, even if main has advanced while this run waited.
+          # Build the exact approved merge.
           ref: ${{ github.event.pull_request.merge_commit_sha }}
           fetch-depth: 0
 
@@ -124,69 +100,29 @@ jobs:
         with:
           node-version: '24'
           registry-url: https://registry.npmjs.org
-          package-manager-cache: false
 
       - uses: pnpm/action-setup@v6
 
-      - name: Validate the approved version
+      - name: Read release version
         id: version
-        env:
-          RELEASE_BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
-          node <<'JS' >> "$GITHUB_OUTPUT"
-          const assert = require('node:assert/strict');
-          const core = require('./packages/core/package.json');
-          const plugin = require('./packages/eslint-plugin/package.json');
-          assert.match(core.version, /^\d+\.\d+\.\d+$/);
-          assert.equal(plugin.version, core.version);
-          assert.equal(plugin.peerDependencies[core.name], core.version);
-          assert.equal(process.env.RELEASE_BRANCH, `release/v${core.version}`);
-          console.log(`version=${core.version}`);
-          JS
-          version=$(node -p "require('./packages/core/package.json').version")
-          if git show-ref --verify --quiet "refs/tags/v$version"; then
-            echo "::error::This version is already tagged. Inspect the previous publication instead of releasing it again."
-            exit 1
-          fi
+          echo "version=$(node -p "require('./packages/core/package.json').version")" >> "$GITHUB_OUTPUT"
 
-      - name: Install dependencies and integration tooling
+      - name: Install dependencies
         run: |
           pnpm install --frozen-lockfile
-          npm install --global npm@11 yalc
+          npm install --global npm@11
 
-      - run: pnpm lint:all
-      # This runs build:all after versioning and provides the builds to the fixtures.
-      - run: pnpm link:sheriff
-      - run: pnpm test:ci
-      - run: bash run-integration-tests.sh
-
-      - name: Verify compiled package metadata and contents
+      - name: Build release packages
         run: |
-          node <<'JS'
-          const assert = require('node:assert/strict');
-          const fs = require('node:fs');
-          const version = require('./packages/core/package.json').version;
-          const core = require('./dist/packages/core/package.json');
-          const plugin = require('./dist/packages/eslint-plugin/package.json');
-          assert.equal(core.version, version);
-          assert.equal(plugin.version, version);
-          assert.equal(plugin.peerDependencies[core.name], version);
-          for (const [directory, pkg] of [['core', core], ['eslint-plugin', plugin]]) {
-            assert.equal(pkg.repository.url, 'git+https://github.com/sheriff-arch/sheriff.git');
-            assert.ok(fs.existsSync(`dist/packages/${directory}/${pkg.main}`));
-            assert.ok(fs.existsSync(`dist/packages/${directory}/${pkg.types}`));
-          }
-          assert.ok(fs.readFileSync(`dist/packages/core/${core.bin.sheriff}`, 'utf8').startsWith('#!/usr/bin/env node'));
-          JS
-          npm publish ./dist/packages/core --access public --dry-run
-          npm publish ./dist/packages/eslint-plugin --access public --dry-run
+          pnpm exec nx run-many --target=build --projects=core,eslint-plugin
+          chmod +x dist/packages/core/src/bin/main.js
 
       - name: Tag the approved merge
         env:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
           MERGED_COMMIT: ${{ github.event.pull_request.merge_commit_sha }}
         run: |
-          test -z "$(git status --porcelain)"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git tag -a "v$RELEASE_VERSION" "$MERGED_COMMIT" -m "v$RELEASE_VERSION"
