@@ -1,3 +1,22 @@
+## 0.21.0 (2026-11-21)
+
+### Package rename
+
+- Publish `@sheriff-arch/sheriff-core` and `@sheriff-arch/eslint-plugin-sheriff`
+  in place of the `@softarc` packages.
+- Change `@softarc/` to `@sheriff-arch/` in imports, ESLint configuration and
+  custom rule names. The CLI command and the rest of the API stay the same.
+
+## 0.20.1 (2026-11-21)
+
+### 🩹 Fixes
+
+- **core:** exclude TypeScript 7 from peer dependencies ([#273](https://github.com/sheriff-arch/sheriff/pull/273))
+
+### ❤️ Thank You
+
+- Rainer Hahnekamp
+
 ## 0.20.0 (2026-09-29)
 
 ### 🚀 Features
