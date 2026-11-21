@@ -1,7 +1,7 @@
 {
-  "name": "@softarc/sheriff-core",
-  "version": "0.20.1",
-  "homepage": "https://github.com/softarc-consulting/sheriff",
+  "name": "@sheriff-arch/sheriff-core",
+  "version": "0.21.0",
+  "homepage": "https://github.com/sheriff-arch/sheriff",
   "license": "MIT",
   "author": {
     "name": "Rainer Hahnekamp",

@@ -4,21 +4,28 @@ title: Installation & Setup
 displayed_sidebar: tutorialSidebar
 ---
 
-Examples are available at https://github.com/softarc-consulting/sheriff/tree/main/test-projects
+Examples are available at https://github.com/sheriff-arch/sheriff/tree/main/test-projects
 
 ## Sheriff and ESLint (recommended)
 
 In order to get the best developer experience, we recommend to use Sheriff with the ESLint plugin.
 
 ```shell
-npm install -D @softarc/sheriff-core @softarc/eslint-plugin-sheriff
+npm install -D @sheriff-arch/sheriff-core @sheriff-arch/eslint-plugin-sheriff
 ```
+
+### Migrating from `@softarc`
+
+Starting with version 0.21.0, Sheriff is published under `@sheriff-arch`.
+Replace the two `@softarc` packages with the names above, and change `@softarc/`
+to `@sheriff-arch/` in imports, ESLint configuration and custom rule names.
+The `sheriff` CLI command and the rest of the API stay the same.
 
 ### Flat Config (_eslint.config.js_)
 
 ```javascript
 // ...
-const sheriff = require('@softarc/eslint-plugin-sheriff');
+const sheriff = require('@sheriff-arch/eslint-plugin-sheriff');
 
 module.exports = tseslint.config(
   // ...
@@ -34,7 +41,7 @@ module.exports = tseslint.config(
 ```json
 {
   "files": ["*.ts"],
-  "extends": ["plugin:@softarc/sheriff/legacy"]
+  "extends": ["plugin:@sheriff-arch/sheriff/legacy"]
 }
 ```
 
@@ -54,7 +61,7 @@ Please note, that the legacy mode's name was changed from `default` to `legacy` 
 const eslint = require('@eslint/js');
 const tseslint = require('typescript-eslint');
 const angular = require('angular-eslint');
-const sheriff = require('@softarc/eslint-plugin-sheriff');
+const sheriff = require('@sheriff-arch/eslint-plugin-sheriff');
 
 module.exports = tseslint.config(
   {
@@ -146,7 +153,7 @@ module.exports = tseslint.config(
     },
     {
       "files": ["*.ts"],
-      "extends": ["plugin:@softarc/sheriff/legacy"]
+      "extends": ["plugin:@sheriff-arch/sheriff/legacy"]
     }
   ]
 }
@@ -162,7 +169,7 @@ module.exports = tseslint.config(
 
 ```js
 import nx from '@nx/eslint-plugin';
-import sheriff from '@softarc/eslint-plugin-sheriff' // <-- add this
+import sheriff from '@sheriff-arch/eslint-plugin-sheriff' // <-- add this
 
 export default [
   ...nx.configs['flat/base'],
@@ -188,7 +195,7 @@ export default [
     // existing rules...
     {
       "files": ["*.ts"],
-      "extends": ["plugin:@softarc/sheriff/legacy"],
+      "extends": ["plugin:@sheriff-arch/sheriff/legacy"],
     },
   ],
 }
@@ -201,7 +208,7 @@ export default [
 You can also use Sheriff without ESLint. In this case, you have to run the Sheriff CLI manually.
 
 ```shell
-npm install -D @softarc/sheriff-core
+npm install -D @sheriff-arch/sheriff-core
 ```
 
 The CLI provides you with commands to list modules, check the rules and export the dependency graph in JSON format.

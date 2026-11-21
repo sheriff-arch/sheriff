@@ -1,4 +1,4 @@
-import { UserError } from '@softarc/sheriff-core';
+import { UserError } from '@sheriff-arch/sheriff-core';
 
 declare module 'vitest' {
   interface Assertion<T = never> {

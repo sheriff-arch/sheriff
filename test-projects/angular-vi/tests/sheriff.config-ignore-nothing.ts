@@ -1,4 +1,4 @@
-import { noDependencies, sameTag, SheriffConfig } from '@softarc/sheriff-core';
+import { noDependencies, sameTag, SheriffConfig } from '@sheriff-arch/sheriff-core';
 
 export const config: SheriffConfig = {
   tagging: {

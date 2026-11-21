@@ -1,4 +1,4 @@
-import { violatesEncapsulationRule } from '@softarc/sheriff-core';
+import { violatesEncapsulationRule } from '@sheriff-arch/sheriff-core';
 import { createRule } from './create-rule';
 
 export const deepImport = createRule(

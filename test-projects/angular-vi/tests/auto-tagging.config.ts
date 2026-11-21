@@ -1,4 +1,4 @@
-import { SheriffConfig } from "@softarc/sheriff-core";
+import { SheriffConfig } from "@sheriff-arch/sheriff-core";
 
 export const config: SheriffConfig = {
   depRules: {

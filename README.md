@@ -1,7 +1,7 @@
 # Sheriff
 
-![build status](https://github.com/softarc-consulting/sheriff/actions/workflows/build.yml/badge.svg)
-[![npm version](https://img.shields.io/npm/v/%40softarc%2Fsheriff-core.svg)](https://www.npmjs.com/package/%40softarc%2Fsheriff-core)
+![build status](https://github.com/sheriff-arch/sheriff/actions/workflows/build.yml/badge.svg)
+[![npm version](https://img.shields.io/npm/v/%40sheriff-arch%2Fsheriff-core.svg)](https://www.npmjs.com/package/%40sheriff-arch%2Fsheriff-core)
 
 Sheriff is a tool designed to enforce module boundaries and dependency rules in TypeScript projects, ensuring a clean and maintainable codebase.
 
@@ -20,10 +20,10 @@ For a more detailed guide on installation, setup, and usage, head to the **[Docu
 To install Sheriff with the ESLint plugin, run
 
 ```shell
-npm i -D @softarc/sheriff-core @softarc/eslint-plugin-sheriff
+npm i -D @sheriff-arch/sheriff-core @sheriff-arch/eslint-plugin-sheriff
 npx sheriff init
 ```
 
 <p align="center">
-<img src="https://raw.githubusercontent.com/softarc-consulting/sheriff/main/logo.png" width="320" style="text-align: center">
+<img src="https://raw.githubusercontent.com/sheriff-arch/sheriff/main/logo.png" width="320" style="text-align: center">
 </p>
