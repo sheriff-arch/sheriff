@@ -69,12 +69,12 @@ jobs:
           Review both package versions, the exact core peer dependency, lockfile and changelog.
           You can edit the changelog on this branch before merging.
 
-          Merging this PR into main authorizes the Release workflow to check and build the
-          merged commit, create its version tag, and publish both compiled packages to npm.
+          Merging this PR builds the release, creates its version tag, and stages both packages on npm.
+          Approve both packages under Staged Packages on npm to publish them.
           BODY
           gh pr create --base main --head "$release_branch" --title "chore: release $RELEASE_VERSION" --body-file "$RUNNER_TEMP/release-pr.md"
 
-  publish:
+  stage:
     if: >-
       github.event_name == 'pull_request' &&
       github.event.pull_request.merged == true &&
@@ -84,7 +84,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write # Create and push the tag; never push a commit to main.
-      id-token: write # npm trusted publishing; no npm token.
+      id-token: write # npm trusted staging; no npm token.
     env:
       CI: 'true'
       NX_DAEMON: 'false'
@@ -128,10 +128,10 @@ jobs:
           git tag -a "v$RELEASE_VERSION" "$MERGED_COMMIT" -m "v$RELEASE_VERSION"
           git push origin "refs/tags/v$RELEASE_VERSION"
 
-      - name: Publish core
+      - name: Stage core
         working-directory: dist/packages/core
-        run: npm publish --access public --tag latest
+        run: npm stage publish --access public --tag latest
 
-      - name: Publish ESLint plugin
+      - name: Stage ESLint plugin
         working-directory: dist/packages/eslint-plugin
-        run: npm publish --access public --tag latest
+        run: npm stage publish --access public --tag latest
