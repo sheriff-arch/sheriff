@@ -69,7 +69,8 @@ jobs:
           Review both package versions, the exact core peer dependency, lockfile and changelog.
           You can edit the changelog on this branch before merging.
 
-          Merging this PR builds the release, creates its version tag, and stages both packages on npm.
+          Merging this PR builds the release, tags it, stages both packages on npm,
+          and publishes a GitHub Release with the changelog.
           Approve both packages under Staged Packages on npm to publish them.
           BODY
           gh pr create --base main --head "$release_branch" --title "chore: release $RELEASE_VERSION" --body-file "$RUNNER_TEMP/release-pr.md"
@@ -83,7 +84,7 @@ jobs:
       startsWith(github.event.pull_request.head.ref, 'release/v')
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Create and push the tag; never push a commit to main.
+      contents: write # Create the tag and GitHub Release; never push a commit to main.
       id-token: write # npm trusted staging; no npm token.
     env:
       CI: 'true'
@@ -135,3 +136,18 @@ jobs:
       - name: Stage ESLint plugin
         working-directory: dist/packages/eslint-plugin
         run: npm stage publish --access public --tag latest
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          awk -v version="$RELEASE_VERSION" '
+            /^## / {
+              if (found) exit
+              found = ($2 == version)
+              next
+            }
+            found { print }
+          ' CHANGELOG.md > "$RUNNER_TEMP/release-notes.md"
+          gh release create "v$RELEASE_VERSION" --title "v$RELEASE_VERSION" --notes-file "$RUNNER_TEMP/release-notes.md"
