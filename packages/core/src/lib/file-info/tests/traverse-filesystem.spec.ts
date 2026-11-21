@@ -374,27 +374,62 @@ describe('traverse filesystem', () => {
     expect(unassignedFileInfo.imports).toHaveLength(1);
   });
 
-  it('should ignore and not traverse files with ignored extensions', () => {
-    createProject({
+  it.each(['', '?raw'])(
+    'should respect custom ignored extensions: %s',
+    (query) => {
+      createProject({
+        'tsconfig.json': tsConfig(),
+        src: {
+          'main.ts': [`./style.scss${query}`, `./info.md${query}`],
+          'style.scss': [],
+          'info.md': [],
+        },
+      });
+
+      const tsData = generateTsData(toFsPath('/project/tsconfig.json'));
+      const mainPath = toFsPath('/project/src/main.ts');
+
+      const unassignedFileInfo = traverseFilesystem(
+        mainPath,
+        new Map<FsPath, UnassignedFileInfo>(),
+        tsData,
+        ['md'],
+      );
+
+      expect(unassignedFileInfo.imports).toEqual([]);
+      expect(unassignedFileInfo.unresolvableImports).toEqual([
+        `./style.scss${query}`,
+      ]);
+    },
+  );
+
+  it.each([
+    './icon.svg?react',
+    './icon.SVG?react',
+    './icon.svg?url&version=1.0',
+    './style.scss?inline',
+  ])('should ignore asset imports with loader queries: %s', (assetImport) => {
+    const fileInfo = setup({
       'tsconfig.json': tsConfig(),
       src: {
-        'main.ts': ['./style.scss', './info.md'],
-        'style.scss': [],
-        'info.md': [],
+        'main.ts': [assetImport],
       },
     });
 
-    const tsData = generateTsData(toFsPath('/project/tsconfig.json'));
-    const mainPath = toFsPath('/project/src/main.ts');
+    expect(fileInfo.imports).toEqual([]);
+    expect(fileInfo.unresolvableImports).toEqual([]);
+  });
 
-    const unassignedFileInfo = traverseFilesystem(
-      mainPath,
-      new Map<FsPath, UnassignedFileInfo>(),
-      tsData,
-      ['md'],
-    );
+  it('should apply loader query handling only when checking ignored extensions', () => {
+    const fileInfo = setup({
+      'tsconfig.json': tsConfig(),
+      src: {
+        'main.ts': ['./module.ts?asset=.svg'],
+        'module.ts': [],
+      },
+    });
 
-    expect(unassignedFileInfo.imports).toEqual([]);
-    expect(unassignedFileInfo.unresolvableImports).toEqual(['./style.scss']);
+    expect(fileInfo.imports).toEqual([]);
+    expect(fileInfo.unresolvableImports).toEqual(['./module.ts?asset=.svg']);
   });
 });

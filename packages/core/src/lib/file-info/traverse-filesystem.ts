@@ -56,7 +56,11 @@ export function traverseFilesystem(
   for (const importedFile of preProcessedFile.importedFiles) {
     const { fileName } = importedFile;
     // skip configured ignored extensions early
-    const fileExtension = fileName.split('.').pop()?.toLowerCase();
+    const fileExtension = fileName
+      .split('?')[0]
+      .split('.')
+      .pop()
+      ?.toLowerCase();
     if (fileExtension && ignoreFileExtensions.includes(fileExtension)) {
       continue;
     }

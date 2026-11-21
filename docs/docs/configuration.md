@@ -95,6 +95,8 @@ These options have sensible defaults and are typically only customized for speci
 - **Default**: See [Default Ignored Extensions]
 - **Description**: Controls which file extensions are ignored during import traversal. Sheriff will not follow imports to files with these extensions.
 
+Loader queries such as `?react` in `icon.svg?react` do not affect extension matching.
+
 <details>
 <summary>Default Ignored Extensions</summary>
 
