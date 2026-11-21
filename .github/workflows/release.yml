@@ -111,7 +111,7 @@ jobs:
       - name: Install dependencies
         run: |
           pnpm install --frozen-lockfile
-          npm install --global npm@^11.15.0
+          npm install --global npm@11
 
       - name: Build release packages
         run: |
