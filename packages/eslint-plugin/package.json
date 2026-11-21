@@ -1,6 +1,6 @@
 {
   "name": "@sheriff-arch/eslint-plugin-sheriff",
-  "version": "0.21.0",
+  "version": "0.21.1",
   "homepage": "https://github.com/sheriff-arch/sheriff",
   "license": "MIT",
   "author": {
@@ -18,7 +18,7 @@
     "@sheriff-arch/sheriff-core": "workspace:*"
   },
   "peerDependencies": {
-    "@sheriff-arch/sheriff-core": "0.21.0",
+    "@sheriff-arch/sheriff-core": "0.21.1",
     "eslint": "^8.0.0 || ^9.0.0 || ^10.0.0",
     "@typescript-eslint/utils": "^5.48.2 || ^6.0.0 || ^7.0.0 || ^8.0.0-alpha.20"
   }

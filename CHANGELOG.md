@@ -1,3 +1,7 @@
+## 0.21.1 (2026-11-21)
+
+This was a version bump only, there were no code changes.
+
 ## 0.21.0 (2026-11-21)
 
 ### Package rename
