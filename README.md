@@ -15,7 +15,7 @@ Key features include:
 - Support for automatic and manual tagging of modules to apply dependency rules effectively.
 - A CLI for initializing configurations, verifying rules, listing modules, and exporting dependency graphs.
 
-For a more detailed guide on installation, setup, and usage, head to the **[Documentation](https://softarc-consulting.github.io/sheriff/)**.
+For a more detailed guide on installation, setup, and usage, head to the **[Documentation](https://sheriff-arch.github.io/sheriff/)**.
 
 To install Sheriff with the ESLint plugin, run
 
