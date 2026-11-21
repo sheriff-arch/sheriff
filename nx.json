@@ -53,9 +53,8 @@
       }
     },
     "git": {
-      "commit": true,
-      "commitMessage": "chore: release {version}",
-      "tag": true,
+      "commit": false,
+      "tag": false,
       "push": false
     }
   },

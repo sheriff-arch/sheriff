@@ -1,0 +1,137 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version bump for both packages
+        required: true
+        default: patch
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+  pull_request:
+    branches:
+      - main
+    types:
+      - closed
+
+permissions: {}
+
+jobs:
+  prepare:
+    if: github.event_name == 'workflow_dispatch' && github.repository == 'sheriff-arch/sheriff' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Push only the release branch.
+      pull-requests: write # Open the release PR.
+    env:
+      CI: 'true'
+      NX_DAEMON: 'false'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - uses: pnpm/action-setup@v6
+      - run: pnpm install --frozen-lockfile
+
+      - name: Generate versions and changelog with Nx
+        id: version
+        env:
+          VERSION_BUMP: ${{ inputs.version }}
+        run: |
+          test -z "$(git status --porcelain)"
+          # nx.json disables Nx commits, tags and pushes. npm publishing is skipped.
+          pnpm exec nx release "$VERSION_BUMP" --skip-publish
+          echo "version=$(node -p "require('./packages/core/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Commit to a release branch and open a PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          release_branch="release/v$RELEASE_VERSION"
+          git switch -c "$release_branch"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m "chore: release $RELEASE_VERSION"
+          git push origin "$release_branch"
+          cat > "$RUNNER_TEMP/release-pr.md" <<'BODY'
+          Review both package versions, the exact core peer dependency, lockfile and changelog.
+          You can edit the changelog on this branch before merging.
+
+          Merging this PR into main authorizes the Release workflow to check and build the
+          merged commit, create its version tag, and publish both compiled packages to npm.
+          BODY
+          gh pr create --base main --head "$release_branch" --title "chore: release $RELEASE_VERSION" --body-file "$RUNNER_TEMP/release-pr.md"
+
+  publish:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.merged == true &&
+      github.repository == 'sheriff-arch/sheriff' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      startsWith(github.event.pull_request.head.ref, 'release/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Create and push the tag; never push a commit to main.
+      id-token: write # npm trusted publishing; no npm token.
+    env:
+      CI: 'true'
+      NX_DAEMON: 'false'
+      NX_SKIP_NX_CACHE: 'true'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # Build the exact approved merge.
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          registry-url: https://registry.npmjs.org
+
+      - uses: pnpm/action-setup@v6
+
+      - name: Read release version
+        id: version
+        run: |
+          echo "version=$(node -p "require('./packages/core/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Install dependencies
+        run: |
+          pnpm install --frozen-lockfile
+          npm install --global npm@11
+
+      - name: Build release packages
+        run: |
+          pnpm exec nx run-many --target=build --projects=core,eslint-plugin
+          chmod +x dist/packages/core/src/bin/main.js
+
+      - name: Tag the approved merge
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          MERGED_COMMIT: ${{ github.event.pull_request.merge_commit_sha }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git tag -a "v$RELEASE_VERSION" "$MERGED_COMMIT" -m "v$RELEASE_VERSION"
+          git push origin "refs/tags/v$RELEASE_VERSION"
+
+      - name: Publish core
+        working-directory: dist/packages/core
+        run: npm publish --access public --tag latest
+
+      - name: Publish ESLint plugin
+        working-directory: dist/packages/eslint-plugin
+        run: npm publish --access public --tag latest
