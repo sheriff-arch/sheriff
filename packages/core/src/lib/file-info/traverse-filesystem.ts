@@ -56,7 +56,11 @@ export function traverseFilesystem(
   for (const importedFile of preProcessedFile.importedFiles) {
     const { fileName } = importedFile;
     // skip configured ignored extensions early
-    const fileExtension = fileName.split('.').pop()?.toLowerCase();
+    const extensionPath = fileName.includes('?')
+      ? (resolveImportFile(fileName, fsPath, tsData) ??
+        resolveImportFile(fileName.split('?')[0], fsPath, tsData))
+      : fileName;
+    const fileExtension = extensionPath?.split('.').pop()?.toLowerCase();
     if (fileExtension && ignoreFileExtensions.includes(fileExtension)) {
       continue;
     }
@@ -111,4 +115,52 @@ export function traverseFilesystem(
   }
 
   return fileInfo;
+}
+
+// Asset files need not resolve as TypeScript modules. Check literal files before
+// interpreting a question mark as a loader query, without changing resolution.
+function resolveImportFile(
+  fileName: string,
+  importer: FsPath,
+  { paths, baseUrl }: TsData,
+): FsPath | undefined {
+  const fs = getFs();
+  const existingFile = (path: string): FsPath | undefined =>
+    fs.exists(path) && fs.isFile(path) ? path : undefined;
+
+  if (fs.isAbsolute(fileName)) {
+    return existingFile(fileName);
+  }
+  if (fileName.startsWith('./') || fileName.startsWith('../')) {
+    return existingFile(fs.join(fs.getParent(importer), fileName));
+  }
+
+  const exactAlias = paths[fileName];
+  if (exactAlias) {
+    const file = existingFile(exactAlias);
+    if (file) return file;
+  }
+  const wildcardAliases = Object.entries(paths)
+    .filter(([alias]) => alias.endsWith('/*'))
+    .sort(([left], [right]) => right.length - left.length);
+  for (const [alias, target] of wildcardAliases) {
+    const prefix = alias.slice(0, -1);
+    if (fileName.startsWith(prefix)) {
+      const file = existingFile(fs.join(target, fileName.slice(prefix.length)));
+      if (file) return file;
+    }
+  }
+
+  if (baseUrl) {
+    const file = existingFile(fs.join(baseUrl, fileName));
+    if (file) return file;
+  }
+  let directory = fs.getParent(importer);
+  while (true) {
+    const file = existingFile(fs.join(directory, 'node_modules', fileName));
+    if (file) return file;
+    const parent = fs.getParent(directory);
+    if (parent === directory) return undefined;
+    directory = parent;
+  }
 }

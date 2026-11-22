@@ -95,6 +95,12 @@ These options have sensible defaults and are typically only customized for speci
 - **Default**: See [Default Ignored Extensions]
 - **Description**: Controls which file extensions are ignored during import traversal. Sheriff will not follow imports to files with these extensions.
 
+For imports containing `?`, an existing file with the complete literal name takes
+priority. Otherwise, Sheriff checks that the file before `?` exists and uses its
+extension, so `icon.svg?react` is ignored when `icon.svg` exists. Missing files
+with loader queries remain unresolved. Imports without `?` keep the usual
+extension matching, even if the file is missing.
+
 <details>
 <summary>Default Ignored Extensions</summary>
 
