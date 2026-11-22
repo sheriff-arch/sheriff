@@ -413,6 +413,7 @@ describe('traverse filesystem', () => {
       'tsconfig.json': tsConfig(),
       src: {
         'main.ts': [assetImport],
+        [assetImport.split('?')[0].slice(2)]: [],
       },
     });
 
@@ -431,5 +432,124 @@ describe('traverse filesystem', () => {
 
     expect(fileInfo.imports).toEqual([]);
     expect(fileInfo.unresolvableImports).toEqual(['./module.ts?asset=.svg']);
+  });
+  it.each(['./icon?dark.svg', './module.ts?asset=.svg'])(
+    'should use the extension of an existing literal filename: %s',
+    (assetImport) => {
+      const fileInfo = setup({
+        'tsconfig.json': tsConfig(),
+        src: {
+          'main.ts': [assetImport],
+          [assetImport.slice(2)]: [],
+        },
+      });
+
+      expect(fileInfo.imports).toEqual([]);
+      expect(fileInfo.unresolvableImports).toEqual([]);
+    },
+  );
+
+  it('should prefer an existing literal TypeScript file over a query-free asset', () => {
+    const fileInfo = setup({
+      'tsconfig.json': tsConfig(),
+      src: {
+        'main.ts': ['./module.svg?component.ts'],
+        'module.svg?component.ts': [],
+        'module.svg': [],
+      },
+    });
+
+    expect(fileInfo.imports.map((item) => item.path)).toEqual([
+      '/project/src/module.svg?component.ts',
+    ]);
+    expect(fileInfo.unresolvableImports).toEqual([]);
+  });
+
+  it.each(['./missing.svg?react', './missing.svg?asset=.svg'])(
+    'should report a missing asset with a loader query: %s',
+    (assetImport) => {
+      const fileInfo = setup({
+        'tsconfig.json': tsConfig(),
+        src: { 'main.ts': [assetImport] },
+      });
+
+      expect(fileInfo.imports).toEqual([]);
+      expect(fileInfo.unresolvableImports).toEqual([assetImport]);
+    },
+  );
+
+  it('should not treat a directory as an existing asset file', () => {
+    const fileInfo = setup({
+      'tsconfig.json': tsConfig(),
+      src: { 'main.ts': ['./icon.svg?react'], 'icon.svg': {} },
+    });
+
+    expect(fileInfo.unresolvableImports).toEqual(['./icon.svg?react']);
+  });
+
+  it.each(['@assets/icon?dark.svg', '@assets/icon.svg?react'])(
+    'should check literal and query-free files through a wildcard alias: %s',
+    (assetImport) => {
+      const fileInfo = setup({
+        'tsconfig.json': tsConfig({ paths: { '@assets/*': ['assets/*'] } }),
+        assets: { 'icon?dark.svg': [], 'icon.svg': [] },
+        src: { 'main.ts': [assetImport] },
+      });
+
+      expect(fileInfo.imports).toEqual([]);
+      expect(fileInfo.unresolvableImports).toEqual([]);
+    },
+  );
+
+  it('should check a query-free file through an exact alias', () => {
+    const fileInfo = setup({
+      'tsconfig.json': tsConfig({ paths: { '@logo': ['assets/icon.svg'] } }),
+      assets: { 'icon.svg': [] },
+      src: { 'main.ts': ['@logo?react'] },
+    });
+
+    expect(fileInfo.unresolvableImports).toEqual([]);
+  });
+
+  it('should check a query-free file relative to the importing file', () => {
+    const fileInfo = setup({
+      'tsconfig.json': tsConfig(),
+      src: {
+        'main.ts': ['./feature/component.ts'],
+        'icon.svg': [],
+        feature: { 'component.ts': ['../icon.svg?react'] },
+      },
+    });
+
+    expect(fileInfo.imports).toHaveLength(1);
+    expect(fileInfo.imports[0].unresolvableImports).toEqual([]);
+  });
+
+  it('should check a query-free file relative to baseUrl', () => {
+    const fileInfo = setup({
+      'tsconfig.json': tsConfig({ baseUrl: 'src' }),
+      src: { 'main.ts': ['assets/icon.svg?react'], assets: { 'icon.svg': [] } },
+    });
+
+    expect(fileInfo.unresolvableImports).toEqual([]);
+  });
+
+  it('should check a query-free package asset in an ancestor node_modules', () => {
+    const fileInfo = setup({
+      'tsconfig.json': tsConfig(),
+      node_modules: { icons: { 'logo.svg': [] } },
+      src: { 'main.ts': ['icons/logo.svg?react'] },
+    });
+
+    expect(fileInfo.unresolvableImports).toEqual([]);
+  });
+
+  it('should keep ignoring missing assets without a question mark', () => {
+    const fileInfo = setup({
+      'tsconfig.json': tsConfig(),
+      src: { 'main.ts': ['./missing.svg'] },
+    });
+
+    expect(fileInfo.unresolvableImports).toEqual([]);
   });
 });
